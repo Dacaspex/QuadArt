@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>Quadtree image filter</title>
+    <style>
+        .upload-form, .preview {
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="upload-form">
+    <input id="image-upload" type="file" alt="Select image" onchange="onImageUpload()"/>
+</div>
+<div class="preview">
+    <canvas id="canvas" width="400" height="400"></canvas>
+</div>
+
+<script src="objects.js"></script>
+<script type="text/javascript">
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const width = 400;
+    const height = 400;
+
+    function onImageUpload() {
+        const file = document.getElementById('image-upload').files[0];
+        const image = new Image();
+
+        // TODO: Fix canvas width, determine canvas height and adjust accordingly to fit the image
+
+        image.onload = function () {
+            ctx.drawImage(image, 0, 0, width, height);
+            ctx.scale(0.2, 0.2);
+        };
+
+        image.src = URL.createObjectURL(file);
+    }
+
+    // Name: QuadArt
+    // Algorithm idea:
+    // Each point in QT holds the dimensions of the sub-image.
+    // In each iteration, map each point/sub-image to a score.
+    // For each point/sub-image that is larger than some threshold, remove from QT and
+    //   insert new points/sub-images with smaller dimensions
+
+    // Possible ideas:
+    //   1. Sort points on highest score and handle that point first.
+    //   2. Evenly go over the QT, layer by layer
+
+    // TODO: Incorporate QT more into algorithm, possibly create separate Qt with special
+    //   strategies
+
+    testQuadTree();
+
+    function testQuadTree() {
+        const boundary = new Rectangle(0, 0, 400, 400);
+        const quadTree = new QuadTree(boundary);
+
+        quadTree.insert(new AnnotatedPoint(20, 20, { w: 20, h: 10, c: '#ff0000' }));
+        quadTree.insert(new AnnotatedPoint(40, 40, { w: 10, h: 10, c: '#00ff00' }));
+
+        drawTree(quadTree);
+    }
+
+    function drawTree(quadTree) {
+        const rectangles = quadTree.getRectangles();
+        const points = quadTree.getPoints();
+
+        rectangles.forEach(r => {
+            ctx.strokeRect(r.x, r.y, r.width, r.height);
+        });
+
+        let x, y, width, height, color;
+        points.forEach(p => {
+            x = p.x;
+            y = p.y;
+            width = p.data.w;
+            height = p.data.h;
+            color = p.data.c;
+
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, width, height);
+        })
+    }
+</script>
+</body>
+</html>
