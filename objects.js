@@ -13,12 +13,6 @@ class AnnotatedPoint extends Point {
 }
 
 class Rectangle {
-    /**
-     * @param x x-coordinate of lower left corner
-     * @param y y-coordinate of lower left corner
-     * @param width
-     * @param height
-     */
     constructor(x, y, width, height) {
         this.x = x;
         this.y = y;

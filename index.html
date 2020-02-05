@@ -5,58 +5,250 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <title>Quadtree image filter</title>
-    <style>
-        .upload-form, .preview {
-            width: 100%;
-            text-align: center;
-        }
-    </style>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+          crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
-<div class="upload-form">
-    <input id="image-upload" type="file" alt="Select image" onchange="onImageUpload()"/>
+<div class="container-lg qa-container">
+    <h1 class="display-1 qa-title"><span class="qa-title-box">Quad</span> Art</h1>
+
+    <div class="input-group mb-2">
+        <div class="custom-file">
+            <input type="file"
+                   class="custom-file-input"
+                   id="qa-image-input"
+                   aria-describedby="inputGroupFileAddon01"
+                   onchange="onImageUpload()"/>
+            <label class="custom-file-label" for="qa-image-input">Choose image</label>
+        </div>
+    </div>
+
+    <div>
+        <a class="mb-2 d-block"
+           data-toggle="collapse"
+           href="#advanced-settings"
+           role="button"
+           aria-expanded="false"
+           aria-controls="advanced-settings">Toggle advanced settings</a>
+    </div>
+
+    <div class="collapse" id="advanced-settings">
+        <div class="form-group">
+            <label for="input-maximum-deepness">Maximum deepness</label>
+            <input type="number" class="form-control" id="input-maximum-deepness" aria-describedby="TODO">
+        </div>
+        <div class="form-group">
+            <label for="input-colour-threshold">Minimum colour threshold</label>
+            <input type="number" class="form-control" id="input-colour-threshold" aria-describedby="TODO">
+        </div>
+    </div>
+
+    <div class="qa-canvas-wrapper" id="qa-canvas-wrapper">
+        <canvas id="canvas"></canvas>
+    </div>
 </div>
-<div class="preview">
-    <canvas id="canvas" width="400" height="400"></canvas>
-</div>
+
+
+<!--<div class="upload-form">-->
+<!--    <input id="image-upload" type="file" alt="Select image" onchange="onImageUpload()"/>-->
+<!--</div>-->
+<!--<div class="preview">-->
+<!--    <canvas id="canvas" width="600" height="600"></canvas>-->
+<!--</div>-->
+
+<!-- Bootstrap -->
+<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+        integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+        integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+        crossorigin="anonymous"></script>
 
 <script src="objects.js"></script>
+<script src="imageQuadTree.js"></script>
+<script src="functions.js"></script>
 <script type="text/javascript">
+    // Makes sure the file name becomes visible after selection
+    $('#qa-image-input').on('change', function () {
+        var fileName = $(this).val().replace('C:\\fakepath\\', " ");
+        $(this).next('.custom-file-label').html(fileName);
+    });
+
+    // Canvas on which the tree will be drawn
     const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const width = 400;
-    const height = 400;
+    const canvasCtx = canvas.getContext('2d');
+
+    // Intermediate buffer to extract pixel data
+    const buffer = document.createElement('canvas');
+    const bufferCtx = buffer.getContext('2d');
+
+    let image;
+
+    const pixelData = [];
+
+    const maxLevel = 5;
+    const threshold = 200;
 
     function onImageUpload() {
-        const file = document.getElementById('image-upload').files[0];
-        const image = new Image();
+        const file = document.getElementById('qa-image-input').files[0];
+        image = new Image();
 
-        // TODO: Fix canvas width, determine canvas height and adjust accordingly to fit the image
+        image.onerror = function () {
+            // TODO: Implement error message
+            console.log('error');
+        };
 
         image.onload = function () {
-            ctx.drawImage(image, 0, 0, width, height);
-            ctx.scale(0.2, 0.2);
+            // TODO: What if image is very small?
+            // Get max width and set canvas and buffer to new dimensions
+            const maxDimension = document.getElementById('qa-canvas-wrapper').offsetWidth;
+            const width = maxDimension;
+            const height = maxDimension;
+
+            canvas.width = width;
+            canvas.height = height;
+            buffer.width = width;
+            buffer.height = height;
+
+            // In order to obtain pixel data, we must first draw the image to the buffer and then
+            // extract the data
+            bufferCtx.drawImage(image, 0, 0, width, height);
+
+            const data = bufferCtx.getImageData(0, 0, width, height).data;
+
+            let r, g, b, a;
+            let x = 0;
+            let y = 0;
+            for (let i = 0; i < width * height * 4; i += 4) {
+                r = data[i];
+                g = data[i + 1];
+                b = data[i + 2];
+                a = data[i + 3];
+
+                if (pixelData[x] === undefined) {
+                    pixelData[x] = [];
+                }
+
+                pixelData[x][y] = [r, g, b, a];
+
+                x += 1;
+                if (x === width) {
+                    y += 1;
+                    x = 0;
+                }
+            }
+
+            renderQuadTree(width, height);
         };
 
         image.src = URL.createObjectURL(file);
     }
 
-    // Name: QuadArt
-    // Algorithm idea:
-    // Each point in QT holds the dimensions of the sub-image.
-    // In each iteration, map each point/sub-image to a score.
-    // For each point/sub-image that is larger than some threshold, remove from QT and
-    //   insert new points/sub-images with smaller dimensions
+    function renderQuadTree(width, height) {
+        const boundary = new Rectangle(0, 0, width, height);
+        const quadTree = new ImageQuadTree(boundary);
+        const stack = [quadTree];
 
-    // Possible ideas:
-    //   1. Sort points on highest score and handle that point first.
-    //   2. Evenly go over the QT, layer by layer
+        // Build quad tree
+        let candidate = null;
+        while (stack.length !== 0) {
+            candidate = stack.shift();
 
-    // TODO: Incorporate QT more into algorithm, possibly create separate Qt with special
-    //   strategies
+            if (getColourDeviation(candidate.rectangle) <= threshold) {
+                continue;
+            }
 
-    testQuadTree();
+            if (candidate.level <= maxLevel) {
+                candidate.divide();
+                candidate.getSubTrees().forEach(subTree => stack.push(subTree));
+            }
+        }
+
+        // Collect rectangles
+        const rectangles = quadTree.getRectangles();
+
+        // Render quad tree
+        rectangles.forEach(rectangle => {
+            const rgb = getAverageColour(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
+            canvasCtx.fillStyle = rgbToHex(rgb);
+            canvasCtx.fillRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
+            canvasCtx.strokeStyle = '#333';
+            canvasCtx.strokeRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height)
+        });
+    }
+
+    function getAverageColour(x, y, width, height) {
+        // TODO: This is a naive method for calculating average, implement better method
+        let data = null;
+        let rSum = 0;
+        let gSum = 0;
+        let bSum = 0;
+
+        for (let i = Math.round(x); i < x + width; i++) {
+            for (let j = Math.round(y); j < y + height; j++) {
+                data = pixelData[i][j];
+                rSum += data[0];
+                gSum += data[1];
+                bSum += data[2];
+            }
+        }
+
+        const size = width * height;
+        return [Math.round(rSum / size), Math.round(gSum / size), Math.round(bSum / size)];
+    }
+
+    function getColourDeviation(rectangle) {
+        // return 400;
+
+        // TODO: This is a naive method for calculating deviation, implement better method
+        let data = null;
+        let sum = null;
+        let max = [0, 0, 0];
+        let min = [255, 255, 255];
+
+        for (let i = Math.round(rectangle.x); i < rectangle.x + rectangle.width; i++) {
+            for (let j = Math.round(rectangle.y); j < rectangle.y + rectangle.height; j++) {
+                data = pixelData[i][j];
+                sum = data[0] + data[1] + data[2];
+                if (sum > max[0] + max[1] + max[2]) {
+                    max = [data[0], data[1], data[2]];
+                }
+                if (sum < min[0] + min[1] + min[2]) {
+                    min = [data[0], data[1], data[2]];
+                }
+            }
+        }
+
+        return Math.sqrt(Math.pow(max[0] - min[0], 2) + Math.pow(max[1] - min[1], 2) + Math.pow(max[2] - min[2], 2))
+    }
+
+    function componentToHex(c) {
+        const hex = c.toString(16);
+        return hex.length === 1 ? "0" + hex : hex;
+    }
+
+    function rgbToHex(rgb) {
+        return "#" + componentToHex(rgb[0]) + componentToHex(rgb[1]) + componentToHex(rgb[2]);
+    }
+
+    // Features:
+    // - Render up to certain level and/or threshold
+    //   Stack based algorithm, each time a square is divided it's children are added to the stack.
+    // - Render interactively
+    //   Keep a render loop that only performs the operation above at certain intervals.
+    // - Be able to set the edge colour
+    // - Manually deepen tree
+    //   After algorithm is done, enable user interaction (or with a toggle).
 
     function testQuadTree() {
         const boundary = new Rectangle(0, 0, 400, 400);
