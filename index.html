@@ -94,10 +94,12 @@
 
     let image;
 
-    const pixelData = [];
+    let pixelData = [];
 
     const maxLevel = 5;
     const threshold = 200;
+
+    let quadTree;
 
     function onImageUpload() {
         const file = document.getElementById('qa-image-input').files[0];
@@ -117,168 +119,13 @@
 
             canvas.width = width;
             canvas.height = height;
-            buffer.width = width;
-            buffer.height = height;
 
-            // In order to obtain pixel data, we must first draw the image to the buffer and then
-            // extract the data
-            bufferCtx.drawImage(image, 0, 0, width, height);
-
-            const data = bufferCtx.getImageData(0, 0, width, height).data;
-
-            let r, g, b, a;
-            let x = 0;
-            let y = 0;
-            for (let i = 0; i < width * height * 4; i += 4) {
-                r = data[i];
-                g = data[i + 1];
-                b = data[i + 2];
-                a = data[i + 3];
-
-                if (pixelData[x] === undefined) {
-                    pixelData[x] = [];
-                }
-
-                pixelData[x][y] = [r, g, b, a];
-
-                x += 1;
-                if (x === width) {
-                    y += 1;
-                    x = 0;
-                }
-            }
-
-            renderQuadTree(width, height);
+            pixelData = getPixelData(image, width, height);
+            quadTree = buildQuadTree(pixelData, width, height, maxLevel, threshold);
+            renderQuadTree(canvasCtx, pixelData, quadTree);
         };
 
         image.src = URL.createObjectURL(file);
-    }
-
-    function renderQuadTree(width, height) {
-        const boundary = new Rectangle(0, 0, width, height);
-        const quadTree = new ImageQuadTree(boundary);
-        const stack = [quadTree];
-
-        // Build quad tree
-        let candidate = null;
-        while (stack.length !== 0) {
-            candidate = stack.shift();
-
-            if (getColourDeviation(candidate.rectangle) <= threshold) {
-                continue;
-            }
-
-            if (candidate.level <= maxLevel) {
-                candidate.divide();
-                candidate.getSubTrees().forEach(subTree => stack.push(subTree));
-            }
-        }
-
-        // Collect rectangles
-        const rectangles = quadTree.getRectangles();
-
-        // Render quad tree
-        rectangles.forEach(rectangle => {
-            const rgb = getAverageColour(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
-            canvasCtx.fillStyle = rgbToHex(rgb);
-            canvasCtx.fillRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
-            canvasCtx.strokeStyle = '#333';
-            canvasCtx.strokeRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height)
-        });
-    }
-
-    function getAverageColour(x, y, width, height) {
-        // TODO: This is a naive method for calculating average, implement better method
-        let data = null;
-        let rSum = 0;
-        let gSum = 0;
-        let bSum = 0;
-
-        for (let i = Math.round(x); i < x + width; i++) {
-            for (let j = Math.round(y); j < y + height; j++) {
-                data = pixelData[i][j];
-                rSum += data[0];
-                gSum += data[1];
-                bSum += data[2];
-            }
-        }
-
-        const size = width * height;
-        return [Math.round(rSum / size), Math.round(gSum / size), Math.round(bSum / size)];
-    }
-
-    function getColourDeviation(rectangle) {
-        // return 400;
-
-        // TODO: This is a naive method for calculating deviation, implement better method
-        let data = null;
-        let sum = null;
-        let max = [0, 0, 0];
-        let min = [255, 255, 255];
-
-        for (let i = Math.round(rectangle.x); i < rectangle.x + rectangle.width; i++) {
-            for (let j = Math.round(rectangle.y); j < rectangle.y + rectangle.height; j++) {
-                data = pixelData[i][j];
-                sum = data[0] + data[1] + data[2];
-                if (sum > max[0] + max[1] + max[2]) {
-                    max = [data[0], data[1], data[2]];
-                }
-                if (sum < min[0] + min[1] + min[2]) {
-                    min = [data[0], data[1], data[2]];
-                }
-            }
-        }
-
-        return Math.sqrt(Math.pow(max[0] - min[0], 2) + Math.pow(max[1] - min[1], 2) + Math.pow(max[2] - min[2], 2))
-    }
-
-    function componentToHex(c) {
-        const hex = c.toString(16);
-        return hex.length === 1 ? "0" + hex : hex;
-    }
-
-    function rgbToHex(rgb) {
-        return "#" + componentToHex(rgb[0]) + componentToHex(rgb[1]) + componentToHex(rgb[2]);
-    }
-
-    // Features:
-    // - Render up to certain level and/or threshold
-    //   Stack based algorithm, each time a square is divided it's children are added to the stack.
-    // - Render interactively
-    //   Keep a render loop that only performs the operation above at certain intervals.
-    // - Be able to set the edge colour
-    // - Manually deepen tree
-    //   After algorithm is done, enable user interaction (or with a toggle).
-
-    function testQuadTree() {
-        const boundary = new Rectangle(0, 0, 400, 400);
-        const quadTree = new QuadTree(boundary);
-
-        quadTree.insert(new AnnotatedPoint(20, 20, { w: 20, h: 10, c: '#ff0000' }));
-        quadTree.insert(new AnnotatedPoint(40, 40, { w: 10, h: 10, c: '#00ff00' }));
-
-        drawTree(quadTree);
-    }
-
-    function drawTree(quadTree) {
-        const rectangles = quadTree.getRectangles();
-        const points = quadTree.getPoints();
-
-        rectangles.forEach(r => {
-            ctx.strokeRect(r.x, r.y, r.width, r.height);
-        });
-
-        let x, y, width, height, color;
-        points.forEach(p => {
-            x = p.x;
-            y = p.y;
-            width = p.data.w;
-            height = p.data.h;
-            color = p.data.c;
-
-            ctx.fillStyle = color;
-            ctx.fillRect(x, y, width, height);
-        })
     }
 </script>
 </body>

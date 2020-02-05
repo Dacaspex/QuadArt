@@ -1,12 +1,15 @@
 function getPixelData(image, width, height) {
     // Intermediate buffer to extract pixel data
-    const ctx = document.createElement('canvas').getContext('2d');
+    const buffer = document.createElement('canvas');
+    const bufferCtx = buffer.getContext('2d');
     const pixelData = [];
 
     // In order to obtain pixel data, we must first draw the image
     // to the canvas and then get the data
-    ctx.drawImage(image, 0, 0, width, height);
-    const data = ctx.getImageData(0, 0, image, height).data;
+    buffer.width = width;
+    buffer.height = height;
+    bufferCtx.drawImage(image, 0, 0, width, height);
+    const data = bufferCtx.getImageData(0, 0, width, height).data;
 
     // Data contains a 1D array with all red, green, blue and transparency
     // values. Extract these values and map those to x, y coordinates
