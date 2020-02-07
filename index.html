@@ -29,6 +29,9 @@
             <label class="custom-file-label" for="qa-image-input">Choose image</label>
         </div>
     </div>
+    <div class="alert alert-danger d-none" id="error-image-load" role="alert">
+        Something went wrong while loading the image.
+    </div>
 
     <div>
         <a class="mb-2 d-block"
@@ -39,14 +42,18 @@
            aria-controls="advanced-settings">Toggle advanced settings</a>
     </div>
 
-    <div class="collapse" id="advanced-settings">
+    <div class="collapse mb-2" id="advanced-settings">
         <div class="form-group">
             <label for="input-maximum-deepness">Maximum deepness</label>
-            <input type="number" class="form-control" id="input-maximum-deepness" aria-describedby="TODO">
+            <input type="number" class="form-control" id="input-maximum-deepness" aria-describedby="TODO" value="5"/>
         </div>
         <div class="form-group">
             <label for="input-colour-threshold">Minimum colour threshold</label>
-            <input type="number" class="form-control" id="input-colour-threshold" aria-describedby="TODO">
+            <input type="number" class="form-control" id="input-colour-threshold" aria-describedby="TODO" value="200">
+        </div>
+        <div>
+            <button type="button" class="btn btn-primary" id="button-update">Update</button>
+            <button type="button" class="btn btn-secondary" id="button-restore-defaults">Restore defaults</button>
         </div>
     </div>
 
@@ -54,14 +61,6 @@
         <canvas id="canvas"></canvas>
     </div>
 </div>
-
-
-<!--<div class="upload-form">-->
-<!--    <input id="image-upload" type="file" alt="Select image" onchange="onImageUpload()"/>-->
-<!--</div>-->
-<!--<div class="preview">-->
-<!--    <canvas id="canvas" width="600" height="600"></canvas>-->
-<!--</div>-->
 
 <!-- Bootstrap -->
 <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
@@ -73,59 +72,86 @@
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
         integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
         crossorigin="anonymous"></script>
-
 <script src="objects.js"></script>
 <script src="imageQuadTree.js"></script>
 <script src="functions.js"></script>
 <script type="text/javascript">
+    // Canvas on which the tree will be drawn
+    let canvas = null;
+    let canvasCtx = null;
+    let image = null;
+
+    const settings = {
+        maxLevel: 5,
+        threshold: 200
+    };
+
+    // TODO: Add 'rendering' overlay
+    // TODO: Add edge colour option
+
+    $(document).ready(() => {
+        canvas = document.getElementById('canvas');
+        canvasCtx = canvas.getContext('2d');
+
+        // TODO: What if image is very small?
+        // Get max width and set canvas and buffer to new dimensions
+        const maxDimension = document.getElementById('qa-canvas-wrapper').offsetWidth;
+        const width = maxDimension;
+        const height = maxDimension;
+
+        canvas.width = width;
+        canvas.height = height;
+    });
+
     // Makes sure the file name becomes visible after selection
     $('#qa-image-input').on('change', function () {
-        var fileName = $(this).val().replace('C:\\fakepath\\', " ");
+        const fileName = $(this).val().replace('C:\\fakepath\\', " ");
         $(this).next('.custom-file-label').html(fileName);
     });
 
-    // Canvas on which the tree will be drawn
-    const canvas = document.getElementById('canvas');
-    const canvasCtx = canvas.getContext('2d');
+    // Button handlers
+    $('#button-update').click(function () {
+        // TODO: Check if image is selected
 
-    // Intermediate buffer to extract pixel data
-    const buffer = document.createElement('canvas');
-    const bufferCtx = buffer.getContext('2d');
+        // Get and set new values
+        const maxLevelElement = $('#input-maximum-deepness');
+        const thresholdElement = $('#input-colour-threshold');
 
-    let image;
+        const maxLevel = Math.round(maxLevelElement.val());
+        maxLevelElement.val(maxLevel);
+        settings.maxLevel = maxLevel;
 
-    let pixelData = [];
+        settings.threshold = thresholdElement.val();
 
-    const maxLevel = 5;
-    const threshold = 200;
-
-    let quadTree;
+        render();
+    });
 
     function onImageUpload() {
         const file = document.getElementById('qa-image-input').files[0];
         image = new Image();
 
-        image.onerror = function () {
-            // TODO: Implement error message
-            console.log('error');
-        };
-
-        image.onload = function () {
-            // TODO: What if image is very small?
-            // Get max width and set canvas and buffer to new dimensions
-            const maxDimension = document.getElementById('qa-canvas-wrapper').offsetWidth;
-            const width = maxDimension;
-            const height = maxDimension;
-
-            canvas.width = width;
-            canvas.height = height;
-
-            pixelData = getPixelData(image, width, height);
-            quadTree = buildQuadTree(pixelData, width, height, maxLevel, threshold);
-            renderQuadTree(canvasCtx, pixelData, quadTree);
-        };
+        image.onerror = () => onError();
+        image.onload = () => onLoaded();
 
         image.src = URL.createObjectURL(file);
+    }
+
+    function onError() {
+        $('#error-image-load').toggleClass('d-none');
+    }
+
+    function onLoaded() {
+        $('#error-image-load').addClass('d-none');
+        render();
+    }
+
+    function render() {
+        let width = canvas.width;
+        let height = canvas.height;
+
+        const pixelData = getPixelData(image, width, height);
+        const quadTree = buildQuadTree(pixelData, width, height, settings.maxLevel, settings.threshold);
+        renderQuadTree(canvasCtx, pixelData, quadTree);
     }
 </script>
 </body>
