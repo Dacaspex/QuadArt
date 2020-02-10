@@ -16,6 +16,10 @@ class ImageQuadTree {
         return [this.northEast, this.northWest, this.southEast, this.southWest];
     }
 
+    getRectangle() {
+        return this.rectangle;
+    }
+
     getRectangles() {
         if (this.isDivided()) {
             let rectangles = [];

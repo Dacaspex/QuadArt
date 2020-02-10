@@ -7,11 +7,11 @@
     <title>Quadtree image filter</title>
 
     <!-- Bootstrap -->
-    <link rel="stylesheet"
-          href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
-          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
-          crossorigin="anonymous">
-    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
+        <link rel="stylesheet"
+              href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+              integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+              crossorigin="anonymous">
+        <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
@@ -58,6 +58,7 @@
     </div>
 
     <div class="qa-canvas-wrapper" id="qa-canvas-wrapper">
+        <div class="qa-overlay-text d-none" id="qa-overlay-rendering">Rendering</div>
         <canvas id="canvas"></canvas>
     </div>
 </div>
@@ -83,7 +84,17 @@
 
     const settings = {
         maxLevel: 5,
-        threshold: 200
+        threshold: 200,
+        shapeType: 'RECTANGLES',
+        shapes: {
+            rectangle: {
+                edgeColor: '#333'
+            },
+            circle: {
+                edgeColor: false,
+                backgroundColor: '#009900'
+            }
+        }
     };
 
     // TODO: Add 'rendering' overlay
@@ -146,12 +157,18 @@
     }
 
     function render() {
+        // TODO: JQuery is only updated after function, flush JQuery call somehow?
+        const overlyRendering = $('#qa-overlay-rendering');
+        overlyRendering.removeClass('d-none');
+
         let width = canvas.width;
         let height = canvas.height;
 
         const pixelData = getPixelData(image, width, height);
         const quadTree = buildQuadTree(pixelData, width, height, settings.maxLevel, settings.threshold);
-        renderQuadTree(canvasCtx, pixelData, quadTree);
+        renderQuadTree(canvasCtx, pixelData, quadTree, settings);
+
+        overlyRendering.addClass('d-none');
     }
 </script>
 </body>

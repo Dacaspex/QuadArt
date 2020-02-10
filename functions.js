@@ -65,11 +65,26 @@ function buildQuadTree(pixelData, width, height, maxLevel, threshold) {
     return quadTree;
 }
 
-function renderQuadTree(ctx, pixelData, quadTree) {
-    // Collect rectangles
+function renderQuadTree(ctx, pixelData, quadTree, settings) {
+    const boundary = quadTree.getRectangle();
     const rectangles = quadTree.getRectangles();
 
-    // Render quad tree
+    // Clear canvas
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, boundary.width, boundary.height);
+
+    switch (settings.shapeType) {
+        case 'RECTANGLES':
+            renderRectangles(ctx, pixelData, rectangles, settings.shapes.rectangle);
+            break;
+        case 'CIRCLES':
+            renderCircles(ctx, pixelData, rectangles, settings.shapes.circle);
+            break;
+    }
+}
+
+function renderRectangles(ctx, pixelData, rectangles, settings) {
+    // Render quad tree as rectangles
     let x, y, width, height, rgb;
     rectangles.forEach(rectangle => {
         x = rectangle.x;
@@ -81,8 +96,25 @@ function renderQuadTree(ctx, pixelData, quadTree) {
         ctx.fillStyle = rgbToHex(rgb);
         ctx.fillRect(x, y, width, height);
 
-        ctx.strokeStyle = '#333';
-        ctx.strokeRect(x, y, width, height)
+        ctx.strokeStyle = settings.edgeColor;
+        ctx.strokeRect(x, y, width, height);
+    });
+}
+
+function renderCircles(ctx, pixelData, rectangles, settings) {
+    // Render quad tree as circles
+    let x, y, width, height, rgb;
+    rectangles.forEach(rectangle => {
+        x = rectangle.x;
+        y = rectangle.y;
+        width = rectangle.width;
+        height = rectangle.height;
+        rgb = getAverageColour(pixelData, x, y, width, height);
+
+        ctx.beginPath();
+        ctx.arc(x + width / 2, y + height / 2, width / 2, 0, 2 * Math.PI);
+        ctx.fillStyle = rgbToHex(rgb);
+        ctx.fill();
     });
 }
 
