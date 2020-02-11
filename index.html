@@ -7,11 +7,16 @@
     <title>Quadtree image filter</title>
 
     <!-- Bootstrap -->
-        <link rel="stylesheet"
-              href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
-              integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
-              crossorigin="anonymous">
-        <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+          crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
+
+    <!-- Spectrum color picker -->
+    <link rel="stylesheet" type="text/css"
+          href="https://cdn.jsdelivr.net/npm/spectrum-colorpicker2@2.0.0/dist/spectrum.min.css">
+
     <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
@@ -42,6 +47,7 @@
            aria-controls="advanced-settings">Toggle advanced settings</a>
     </div>
 
+    <!-- Settings form -->
     <div class="collapse mb-2" id="advanced-settings">
         <div class="form-group">
             <label for="input-maximum-deepness">Maximum deepness</label>
@@ -51,6 +57,17 @@
             <label for="input-colour-threshold">Minimum colour threshold</label>
             <input type="number" class="form-control" id="input-colour-threshold" aria-describedby="TODO" value="200">
         </div>
+        <div class="form-group">
+            <label for="input-shape-type">Shape</label>
+            <select class="custom-select form-control" id="input-shape-type">
+                <option value="RECTANGLES" selected>Rectangles</option>
+                <option value="CIRCLES">Circles</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="input-rectangles-edge-color">Edge color</label>
+            <input class="form-control" id="input-rectangles-edge-color"/>
+        </div>
         <div>
             <button type="button" class="btn btn-primary" id="button-update">Update</button>
             <button type="button" class="btn btn-secondary" id="button-restore-defaults">Restore defaults</button>
@@ -58,7 +75,6 @@
     </div>
 
     <div class="qa-canvas-wrapper" id="qa-canvas-wrapper">
-        <div class="qa-overlay-text d-none" id="qa-overlay-rendering">Rendering</div>
         <canvas id="canvas"></canvas>
     </div>
 </div>
@@ -73,6 +89,10 @@
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
         integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
         crossorigin="anonymous"></script>
+
+<!-- Spectrum color picker -->
+<script src="https://cdn.jsdelivr.net/npm/spectrum-colorpicker2@2.0.0/dist/spectrum.min.js"></script>
+
 <script src="objects.js"></script>
 <script src="imageQuadTree.js"></script>
 <script src="functions.js"></script>
@@ -97,6 +117,7 @@
         }
     };
 
+    // TODO: Test on Firefox
     // TODO: Add 'rendering' overlay
     // TODO: Add edge colour option
 
@@ -112,6 +133,13 @@
 
         canvas.width = width;
         canvas.height = height;
+
+        // Initialise Spectrum color picker
+        $('#input-rectangles-edge-color').spectrum({
+            color: settings.shapes.rectangle.edgeColor,
+            type: 'text',
+            hideAfterPaletteSelect: 'true',
+        });
     });
 
     // Makes sure the file name becomes visible after selection
@@ -127,12 +155,16 @@
         // Get and set new values
         const maxLevelElement = $('#input-maximum-deepness');
         const thresholdElement = $('#input-colour-threshold');
+        const shapeTypeElement = $('#input-shape-type');
+        const rectangleEdgeColorElement = $('#input-rectangles-edge-color');
 
         const maxLevel = Math.round(maxLevelElement.val());
         maxLevelElement.val(maxLevel);
-        settings.maxLevel = maxLevel;
 
+        settings.maxLevel = maxLevel;
         settings.threshold = thresholdElement.val();
+        settings.shapeType = shapeTypeElement.val();
+        settings.shapes.rectangle.edgeColor = rectangleEdgeColorElement.val();
 
         render();
     });
@@ -157,18 +189,12 @@
     }
 
     function render() {
-        // TODO: JQuery is only updated after function, flush JQuery call somehow?
-        const overlyRendering = $('#qa-overlay-rendering');
-        overlyRendering.removeClass('d-none');
-
         let width = canvas.width;
         let height = canvas.height;
 
         const pixelData = getPixelData(image, width, height);
         const quadTree = buildQuadTree(pixelData, width, height, settings.maxLevel, settings.threshold);
         renderQuadTree(canvasCtx, pixelData, quadTree, settings);
-
-        overlyRendering.addClass('d-none');
     }
 </script>
 </body>
