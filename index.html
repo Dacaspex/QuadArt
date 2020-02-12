@@ -116,10 +116,12 @@
     </div>
 
     <!-- Control buttons -->
-    <div class="mb-2">
-        <div>
-            <button type="button" class="btn btn-primary" id="button-update" disabled>Update</button>
-            <button type="button" class="btn btn-secondary" id="button-restore-defaults">Restore defaults</button>
+    <div class="form-inline mb-2">
+        <button type="button" class="btn btn-primary mr-1" id="button-update" disabled>Update</button>
+        <button type="button" class="btn btn-secondary mr-2" id="button-restore-defaults">Restore defaults</button>
+        <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="checkbox-do-animation">
+            <label class="custom-control-label" for="checkbox-do-animation">Animate construction</label>
         </div>
     </div>
 
@@ -157,6 +159,7 @@
     let canvas = null;
     let canvasCtx = null;
     let image = null;
+    let animationTimer = null;
 
     // HTML elements
     const maxLevelElement = $('#input-maximum-deepness');
@@ -171,6 +174,7 @@
 
     const updateButton = $('#button-update');
     const restoreDefaultsButton = $('#button-restore-defaults');
+    const doAnimationCheckbox = $('#checkbox-do-animation');
 
     const ShapeType = {
         RECTANGLES: 'RECTANGLES',
@@ -180,6 +184,7 @@
     const defaultSettings = {
         maxLevel: 5,
         threshold: 200,
+        doAnimation: true,
         shapeType: ShapeType.RECTANGLES,
         shapes: {
             rectangle: {
@@ -239,6 +244,7 @@
         maxLevelElement.val(settings.maxLevel);
         thresholdElement.val(settings.threshold);
         shapeTypeElement.val(settings.shapeType);
+        doAnimationCheckbox.prop('checked', settings.doAnimation);
 
         initialiseColorPickers();
         handleFormGroupVisibility();
@@ -252,6 +258,7 @@
         // Set new values in the settings struct
         settings.maxLevel = maxLevel;
         settings.threshold = thresholdElement.val();
+        settings.doAnimation = !!doAnimationCheckbox.prop('checked');
         settings.shapeType = shapeTypeElement.val();
         settings.shapes.rectangle.edgeColor = rectangleEdgeColorElement.val();
         settings.shapes.circle.edgeColor = circleEdgeColorElement.val();
@@ -309,10 +316,37 @@
     function render() {
         let width = canvas.width;
         let height = canvas.height;
-
         const pixelData = getPixelData(image, width, height);
-        const quadTree = buildQuadTree(pixelData, width, height, settings.maxLevel, settings.threshold);
-        renderQuadTree(canvasCtx, width, height, pixelData, quadTree, settings);
+
+        // Stop a previous animation that was still running
+        if (animationTimer != null) {
+            clearInterval(animationTimer);
+        }
+
+        if (settings.doAnimation) {
+            let level = 0;
+            let quadTree = null;
+
+            // Start new animation
+            animationTimer = setInterval(
+                () => {
+                    // Render current level of quad tree
+                    quadTree = buildQuadTree(pixelData, width, height, level, settings.threshold);
+                    renderQuadTree(canvasCtx, width, height, pixelData, quadTree, settings);
+                    level++;
+
+                    // After level has reached beyond max level, clear the interval to stop animation
+                    if (level > settings.maxLevel) {
+                        clearInterval(animationTimer);
+                        animationTimer = null;
+                    }
+                },
+                700
+            )
+        } else {
+            const quadTree = buildQuadTree(pixelData, width, height, settings.maxLevel, settings.threshold);
+            renderQuadTree(canvasCtx, width, height, pixelData, quadTree, settings);
+        }
     }
 </script>
 </body>
