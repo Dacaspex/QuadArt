@@ -18,12 +18,24 @@
           href="https://cdn.jsdelivr.net/npm/spectrum-colorpicker2@2.0.0/dist/spectrum.min.css">
 
     <link rel="stylesheet" href="style.css"/>
+
+    <!-- Font Awesome icons -->
+    <script src="https://kit.fontawesome.com/56398e249d.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
 <div class="container-lg qa-container">
     <h1 class="display-1 qa-title"><span class="qa-title-box">Quad</span> Art</h1>
 
+    <!-- Explanation about the tool and quad trees -->
+    <div class="mb-4">
+        Quad Art is a tool for applying a specific type of filter on images. The filter is based on a data structure
+        called a <a href="https://en.wikipedia.org/wiki/Quadtree">Quadtree</a>. A Quadtree is commonly used in a variety
+        of applications. For example in games for efficient collision detecting, or mesh generation. This tool, however,
+        tries to use this method in a more creative way: an image filter.
+    </div>
+
+    <!-- Image input -->
     <div class="input-group mb-2">
         <div class="custom-file">
             <input type="file"
@@ -38,6 +50,21 @@
         Something went wrong while loading the image.
     </div>
 
+    <!-- Simple settings -->
+    <div class="mb-2" id="settings">
+        <div class="form-group">
+            <label for="input-maximum-deepness">
+                Maximum deepness
+                <i class="far fa-question-circle"
+                   data-toggle="tooltip"
+                   data-placement="right"
+                   title="Higher deepness means that more (smaller) shapes will be generated."></i>
+            </label>
+            <input type="number" class="form-control" id="input-maximum-deepness" aria-describedby="TODO" value="5"/>
+        </div>
+    </div>
+
+    <!-- Toggle button for advanced settings -->
     <div>
         <a class="mb-2 d-block"
            data-toggle="collapse"
@@ -47,14 +74,16 @@
            aria-controls="advanced-settings">Toggle advanced settings</a>
     </div>
 
-    <!-- Settings form -->
+    <!-- Advanced settings -->
     <div class="collapse mb-2" id="advanced-settings">
         <div class="form-group">
-            <label for="input-maximum-deepness">Maximum deepness</label>
-            <input type="number" class="form-control" id="input-maximum-deepness" aria-describedby="TODO" value="5"/>
-        </div>
-        <div class="form-group">
-            <label for="input-colour-threshold">Minimum colour threshold</label>
+            <label for="input-colour-threshold">
+                Minimum colour deviation
+                <i class="far fa-question-circle"
+                   data-toggle="tooltip"
+                   data-placement="right"
+                   title="A higher number means less shapes will be split."></i>
+            </label>
             <input type="number" class="form-control" id="input-colour-threshold" aria-describedby="TODO" value="200">
         </div>
         <div class="form-group">
@@ -64,18 +93,45 @@
                 <option value="CIRCLES">Circles</option>
             </select>
         </div>
-        <div class="form-group">
-            <label for="input-rectangles-edge-color">Edge color</label>
-            <input class="form-control" id="input-rectangles-edge-color"/>
+
+        <!-- Rectangle options -->
+        <div id="form-group-rectangles">
+            <div class="form-group">
+                <label for="input-rectangles-edge-color">Rectangles edge color</label>
+                <input class="form-control" id="input-rectangles-edge-color"/>
+            </div>
         </div>
+
+        <!-- Circle options -->
+        <div id="form-group-circles" class="d-none">
+            <div class="form-group">
+                <label for="input-circles-edge-color">Circles edge color</label>
+                <input class="form-control" id="input-circles-edge-color"/>
+            </div>
+            <div class="form-group">
+                <label for="input-circles-background-color">Background colour</label>
+                <input class="form-control" id="input-circles-background-color"/>
+            </div>
+        </div>
+    </div>
+
+    <!-- Control buttons -->
+    <div class="mb-2">
         <div>
-            <button type="button" class="btn btn-primary" id="button-update">Update</button>
+            <button type="button" class="btn btn-primary" id="button-update" disabled>Update</button>
             <button type="button" class="btn btn-secondary" id="button-restore-defaults">Restore defaults</button>
         </div>
     </div>
 
+    <!-- Actual canvas for drawing -->
     <div class="qa-canvas-wrapper" id="qa-canvas-wrapper">
         <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer m-4">
+        <span><small class="text-muted">Created by Casper Smits</small></span>
+        <span><a href="https://github.com/Dacaspex/quadtree-image-filter">Source code <i class="fab fa-github"></i></a></span>
     </div>
 </div>
 
@@ -102,24 +158,43 @@
     let canvasCtx = null;
     let image = null;
 
-    const settings = {
+    // HTML elements
+    const maxLevelElement = $('#input-maximum-deepness');
+    const thresholdElement = $('#input-colour-threshold');
+    const shapeTypeElement = $('#input-shape-type');
+    const rectangleEdgeColorElement = $('#input-rectangles-edge-color');
+    const circleEdgeColorElement = $('#input-circles-edge-color');
+    const circleBackgroundColorElement = $('#input-circles-background-color');
+
+    const formGroupRectangles = $('#form-group-rectangles');
+    const formGroupCircles = $('#form-group-circles');
+
+    const updateButton = $('#button-update');
+    const restoreDefaultsButton = $('#button-restore-defaults');
+
+    const ShapeType = {
+        RECTANGLES: 'RECTANGLES',
+        CIRCLES: 'CIRCLES'
+    };
+
+    const defaultSettings = {
         maxLevel: 5,
         threshold: 200,
-        shapeType: 'RECTANGLES',
+        shapeType: ShapeType.RECTANGLES,
         shapes: {
             rectangle: {
                 edgeColor: '#333'
             },
             circle: {
-                edgeColor: false,
-                backgroundColor: '#009900'
+                edgeColor: '#000',
+                backgroundColor: '#333'
             }
         }
     };
+    let settings;
 
     // TODO: Test on Firefox
     // TODO: Add 'rendering' overlay
-    // TODO: Add edge colour option
 
     $(document).ready(() => {
         canvas = document.getElementById('canvas');
@@ -134,12 +209,10 @@
         canvas.width = width;
         canvas.height = height;
 
-        // Initialise Spectrum color picker
-        $('#input-rectangles-edge-color').spectrum({
-            color: settings.shapes.rectangle.edgeColor,
-            type: 'text',
-            hideAfterPaletteSelect: 'true',
-        });
+        restoreDefaults();
+        initialiseColorPickers();
+
+        $('[data-toggle="tooltip"]').tooltip()
     });
 
     // Makes sure the file name becomes visible after selection
@@ -148,26 +221,69 @@
         $(this).next('.custom-file-label').html(fileName);
     });
 
+    // Handler for the shape type selector, to make sure the correct settings fields are visible
+    shapeTypeElement.on('change', handleFormGroupVisibility);
+
     // Button handlers
-    $('#button-update').click(function () {
-        // TODO: Check if image is selected
+    updateButton.click(function () {
+        setSettings();
+        render();
+    });
 
-        // Get and set new values
-        const maxLevelElement = $('#input-maximum-deepness');
-        const thresholdElement = $('#input-colour-threshold');
-        const shapeTypeElement = $('#input-shape-type');
-        const rectangleEdgeColorElement = $('#input-rectangles-edge-color');
+    restoreDefaultsButton.click(restoreDefaults);
 
+    function restoreDefaults() {
+        // Create a -new- copy of the default settings object, i.e. no reference
+        settings = JSON.parse(JSON.stringify(defaultSettings));
+
+        maxLevelElement.val(settings.maxLevel);
+        thresholdElement.val(settings.threshold);
+        shapeTypeElement.val(settings.shapeType);
+
+        initialiseColorPickers();
+        handleFormGroupVisibility();
+    }
+
+    function setSettings() {
+        // Make sure we put the rounded value back in the input field
         const maxLevel = Math.round(maxLevelElement.val());
         maxLevelElement.val(maxLevel);
 
+        // Set new values in the settings struct
         settings.maxLevel = maxLevel;
         settings.threshold = thresholdElement.val();
         settings.shapeType = shapeTypeElement.val();
         settings.shapes.rectangle.edgeColor = rectangleEdgeColorElement.val();
+        settings.shapes.circle.edgeColor = circleEdgeColorElement.val();
+        settings.shapes.circle.backgroundColor = circleBackgroundColorElement.val();
+    }
 
-        render();
-    });
+    function initialiseColorPickers() {
+        const factory = color => ({
+            color: color,
+            type: 'text',
+            hideAfterPaletteSelect: 'true',
+        });
+
+        // Initialise Spectrum color picker
+        rectangleEdgeColorElement.spectrum(factory(settings.shapes.rectangle.edgeColor));
+        circleEdgeColorElement.spectrum(factory(settings.shapes.circle.edgeColor));
+        circleBackgroundColorElement.spectrum(factory(settings.shapes.circle.backgroundColor));
+    }
+
+    function handleFormGroupVisibility() {
+        formGroupRectangles.addClass('d-none');
+        formGroupCircles.addClass('d-none');
+
+        switch (shapeTypeElement.val()) {
+            case ShapeType.RECTANGLES:
+                formGroupRectangles.removeClass('d-none');
+                break;
+            case ShapeType.CIRCLES:
+                formGroupCircles.removeClass('d-none');
+                break;
+        }
+    }
 
     function onImageUpload() {
         const file = document.getElementById('qa-image-input').files[0];
@@ -185,6 +301,8 @@
 
     function onLoaded() {
         $('#error-image-load').addClass('d-none');
+        updateButton.prop('disabled', false);
+        setSettings();
         render();
     }
 
@@ -194,7 +312,7 @@
 
         const pixelData = getPixelData(image, width, height);
         const quadTree = buildQuadTree(pixelData, width, height, settings.maxLevel, settings.threshold);
-        renderQuadTree(canvasCtx, pixelData, quadTree, settings);
+        renderQuadTree(canvasCtx, width, height, pixelData, quadTree, settings);
     }
 </script>
 </body>

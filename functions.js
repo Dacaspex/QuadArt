@@ -65,7 +65,7 @@ function buildQuadTree(pixelData, width, height, maxLevel, threshold) {
     return quadTree;
 }
 
-function renderQuadTree(ctx, pixelData, quadTree, settings) {
+function renderQuadTree(ctx, width, height, pixelData, quadTree, settings) {
     const boundary = quadTree.getRectangle();
     const rectangles = quadTree.getRectangles();
 
@@ -74,11 +74,11 @@ function renderQuadTree(ctx, pixelData, quadTree, settings) {
     ctx.fillRect(0, 0, boundary.width, boundary.height);
 
     switch (settings.shapeType) {
-        case 'RECTANGLES':
+        case ShapeType.RECTANGLES:
             renderRectangles(ctx, pixelData, rectangles, settings.shapes.rectangle);
             break;
-        case 'CIRCLES':
-            renderCircles(ctx, pixelData, rectangles, settings.shapes.circle);
+        case ShapeType.CIRCLES:
+            renderCircles(ctx, width, height, pixelData, rectangles, settings.shapes.circle);
             break;
     }
 }
@@ -101,20 +101,28 @@ function renderRectangles(ctx, pixelData, rectangles, settings) {
     });
 }
 
-function renderCircles(ctx, pixelData, rectangles, settings) {
+function renderCircles(ctx, width, height, pixelData, rectangles, settings) {
+    // Render background
+    ctx.fillStyle = settings.backgroundColor;
+    ctx.fillRect(0, 0, width, height);
+
     // Render quad tree as circles
-    let x, y, width, height, rgb;
+    let x, y, rWidth, rHeight, rgb;
     rectangles.forEach(rectangle => {
         x = rectangle.x;
         y = rectangle.y;
-        width = rectangle.width;
-        height = rectangle.height;
-        rgb = getAverageColour(pixelData, x, y, width, height);
+        rWidth = rectangle.width;
+        rHeight = rectangle.height;
+        rgb = getAverageColour(pixelData, x, y, rWidth, rHeight);
 
         ctx.beginPath();
-        ctx.arc(x + width / 2, y + height / 2, width / 2, 0, 2 * Math.PI);
+        ctx.arc(x + rWidth / 2, y + rHeight / 2, rWidth / 2, 0, 2 * Math.PI);
         ctx.fillStyle = rgbToHex(rgb);
         ctx.fill();
+
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = settings.edgeColor;
+        ctx.stroke();
     });
 }
 
