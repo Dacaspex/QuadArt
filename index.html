@@ -98,7 +98,7 @@
         <div id="form-group-rectangles">
             <div class="form-group">
                 <label for="input-rectangles-edge-color">Rectangles edge color</label>
-                <input class="form-control" id="input-rectangles-edge-color"/>
+                <input readonly data-color-picker="true" class="form-control" id="input-rectangles-edge-color"/>
             </div>
         </div>
 
@@ -150,6 +150,10 @@
 
 <!-- Spectrum color picker -->
 <script src="https://cdn.jsdelivr.net/npm/spectrum-colorpicker2@2.0.0/dist/spectrum.min.js"></script>
+
+<!-- JS color -->
+<script src="lib/color-picker.min.js"></script>
+<link rel="stylesheet" href="lib/color-picker.min.css"/>
 
 <script src="objects.js"></script>
 <script src="imageQuadTree.js"></script>
@@ -246,7 +250,7 @@
         shapeTypeElement.val(settings.shapeType);
         doAnimationCheckbox.prop('checked', settings.doAnimation);
 
-        initialiseColorPickers();
+        // initialiseColorPickers();
         handleFormGroupVisibility();
     }
 
@@ -266,16 +270,32 @@
     }
 
     function initialiseColorPickers() {
-        const factory = color => ({
-            color: color,
-            type: 'text',
-            hideAfterPaletteSelect: 'true',
+        const picker = new CP(document.querySelector('input[data-color-picker="true"]'));
+
+        picker.on('drag', function (color) {
+            this.source.value = '#' + color;
+
+            // Manually set the background color and text color
+            this.source.style.backgroundColor = '#' + color;
+            this.source.style.color = getHighContrastColor(hexToRgb(color));
         });
 
-        // Initialise Spectrum color picker
-        rectangleEdgeColorElement.spectrum(factory(settings.shapes.rectangle.edgeColor));
-        circleEdgeColorElement.spectrum(factory(settings.shapes.circle.edgeColor));
-        circleBackgroundColorElement.spectrum(factory(settings.shapes.circle.backgroundColor));
+        // const factory = color => ({
+        //     color: color,
+        //     type: 'text',
+        //     hideAfterPaletteSelect: 'true',
+        // });
+        //
+        // // Initialise Spectrum color picker
+        // rectangleEdgeColorElement.spectrum(factory(settings.shapes.rectangle.edgeColor));
+        // circleEdgeColorElement.spectrum(factory(settings.shapes.circle.edgeColor));
+        // circleBackgroundColorElement.spectrum(factory(settings.shapes.circle.backgroundColor));
+    }
+
+    function getHighContrastColor(back) {
+        const o = Math.round(((back[0] * 299) + (back[1] * 587) + (back[2] * 114)) / 1000);
+
+        return (o > 125) ? 'black' : 'white';
     }
 
     function handleFormGroupVisibility() {
