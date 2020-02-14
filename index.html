@@ -106,11 +106,11 @@
         <div id="form-group-circles" class="d-none">
             <div class="form-group">
                 <label for="input-circles-edge-color">Circles edge color</label>
-                <input class="form-control" id="input-circles-edge-color"/>
+                <input readonly data-color-picker="true" class="form-control" id="input-circles-edge-color"/>
             </div>
             <div class="form-group">
                 <label for="input-circles-background-color">Background colour</label>
-                <input class="form-control" id="input-circles-background-color"/>
+                <input readonly data-color-picker="true" class="form-control" id="input-circles-background-color"/>
             </div>
         </div>
     </div>
@@ -270,26 +270,36 @@
     }
 
     function initialiseColorPickers() {
-        const picker = new CP(document.querySelector('input[data-color-picker="true"]'));
+        // Set all initial values on the input elements, such that they can be properly initialised
+        rectangleEdgeColorElement.val(settings.shapes.rectangle.edgeColor);
+        circleEdgeColorElement.val(settings.shapes.circle.edgeColor);
+        circleBackgroundColorElement.val(settings.shapes.circle.backgroundColor);
 
-        picker.on('drag', function (color) {
-            this.source.value = '#' + color;
+        // Initialise all color pickers
+        document.querySelectorAll('input[data-color-picker="true"]').forEach(element => {
+            const picker = new CP(element);
 
-            // Manually set the background color and text color
-            this.source.style.backgroundColor = '#' + color;
-            this.source.style.color = getHighContrastColor(hexToRgb(color));
+            // Register on-drag handler
+            picker.on('drag', function (color) {
+                // Update the value such that the settings can be updated
+                this.source.value = '#' + color;
+
+                // Manually set the background color and text color
+                this.source.style.backgroundColor = '#' + color;
+                this.source.style.color = getHighContrastColor(hexToRgb(color));
+                this.source.textContent = '#' + color;
+            });
+
+            // Initialise element (background + text)
+            // element.value returns #<number>
+            const initialColour = element.value;
+
+            console.log(initialColour);
+
+            element.style.backgroundColor = initialColour;
+            element.style.color = getHighContrastColor(hexToRgb(initialColour.substring(1)));
+            element.textContent = initialColour;
         });
-
-        // const factory = color => ({
-        //     color: color,
-        //     type: 'text',
-        //     hideAfterPaletteSelect: 'true',
-        // });
-        //
-        // // Initialise Spectrum color picker
-        // rectangleEdgeColorElement.spectrum(factory(settings.shapes.rectangle.edgeColor));
-        // circleEdgeColorElement.spectrum(factory(settings.shapes.circle.edgeColor));
-        // circleBackgroundColorElement.spectrum(factory(settings.shapes.circle.backgroundColor));
     }
 
     function getHighContrastColor(back) {
